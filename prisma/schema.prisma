@@ -1,0 +1,390 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../backend/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// Enums
+// UserRole enum removed in favor of dynamic Role model below
+
+enum PolicyStatus {
+  draft
+  active
+  suspended
+  expired
+  cancelled
+}
+
+enum ClaimStatus {
+  new
+  analyzing
+  validated
+  refused
+  reimbursed
+  closed
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+  cancelled
+}
+
+enum PaymentMethod {
+  mobile_money
+  card
+  transfer
+  cash
+}
+
+enum ClientType {
+  individual
+  corporate
+}
+
+enum ProspectStatus {
+  new
+  contacted
+  interested
+  negotiating
+  converted
+  lost
+}
+
+enum ProspectSource {
+  referral
+  cold_call
+  web
+  event
+  existing_client
+  partnership
+  other
+}
+
+enum ProspectType {
+  individual
+  corporate
+}
+
+/// Models
+model Company {
+  id                 String    @id @default(uuid())
+  name               String
+  email              String?
+  phone              String?
+  address            String?
+  country            String    @default("Bénin")
+  currency           String    @default("XOF")
+  logo_url           String?
+  registration_number String?
+  is_active          Boolean   @default(true)
+  subscription_plan  String?
+  trial_started_at    DateTime?
+  trial_ends_at       DateTime?
+  subscription_expires_at DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  profiles Profile[]
+  clients  Client[]
+  policies Policy[]
+  claims   Claim[]
+  payments Payment[]
+  documents Document[]
+  prospects Prospect[]
+  quotes   Quote[]
+  roles    Role[]
+}
+
+model Profile {
+  id          String   @id @default(uuid())
+  company_id  String?
+  company     Company? @relation(fields: [company_id], references: [id])
+  first_name  String?
+  last_name   String?
+  email       String?  @unique
+  password_hash String?
+  refresh_token_hash String?
+  phone       String?
+  // keep a convenience role name for quick checks
+  role        String   @default("client")
+  // optional relation to Role table for dynamic roles
+  role_id     String? 
+  role_ref    Role?    @relation(fields: [role_id], references: [id])
+  avatar_url  String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  agents Agent?
+  assignedProspects Prospect[]
+}
+
+model Role {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  label     String?
+  company_id String?
+  company   Company? @relation(fields: [company_id], references: [id])
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  profiles Profile[]
+}
+
+model Client {
+  id           String     @id @default(uuid())
+  company_id   String
+  company      Company    @relation(fields: [company_id], references: [id])
+  first_name   String
+  last_name    String
+  email        String?
+  phone        String
+  address      String?
+  profession   String?
+  gender       String?
+  date_of_birth String?
+  client_type  ClientType @default(individual)
+  id_number    String?
+  photo_url    String?
+  is_active    Boolean    @default(true)
+  notes        String?
+  created_by   String?
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+
+  policies Policy[]
+  claims   Claim[]
+  payments Payment[]
+  documents Document[]
+  prospects Prospect[]
+}
+
+model Policy {
+  id             String       @id @default(uuid())
+  company_id     String
+  company        Company      @relation(fields: [company_id], references: [id])
+  client_id      String
+  client         Client       @relation(fields: [client_id], references: [id])
+  agent_id       String?
+  policy_number  String       @unique
+  insurance_type String
+  status         PolicyStatus @default(active)
+  premium_amount Float        @default(0)
+  coverage_amount Float       @default(0)
+  deductible     Float        @default(0)
+  start_date     DateTime
+  end_date       DateTime
+  description    String?
+  created_at     DateTime     @default(now())
+  updated_at     DateTime     @updatedAt
+
+  claims Claim[]
+  payments Payment[]
+  documents Document[]
+}
+
+model Claim {
+  id                String      @id @default(uuid())
+  company_id        String
+  company           Company     @relation(fields: [company_id], references: [id])
+  policy_id         String
+  policy            Policy      @relation(fields: [policy_id], references: [id])
+  client_id         String
+  client            Client      @relation(fields: [client_id], references: [id])
+  claim_number      String      @unique
+  status            ClaimStatus @default(new)
+  incident_date     DateTime
+  incident_description String
+  incident_location String?
+  estimated_amount  Float       @default(0)
+  approved_amount   Float       @default(0)
+  expert_id         String?
+  expert_report     String?
+  latitude          Float?
+  longitude         Float?
+  created_by        String?
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
+  public_token       String?     @unique
+  public_token_expires_at DateTime?
+  public_submitted_at DateTime?
+
+  documents Document[]
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  company_id    String
+  company       Company       @relation(fields: [company_id], references: [id])
+  policy_id     String?
+  policy        Policy?       @relation(fields: [policy_id], references: [id])
+  client_id     String
+  client        Client        @relation(fields: [client_id], references: [id])
+  claim_id      String?
+  payment_type  String
+  payment_method PaymentMethod?
+  amount        Float         @default(0)
+  status        PaymentStatus @default(completed)
+  reference     String?
+  notes         String?
+  payment_date  DateTime
+  fedapay_link  String?
+  fedapay_transaction_id String?
+  refunded_at   DateTime?
+  refund_method String?
+  refund_metadata Json?
+  created_by    String?
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+}
+
+model Document {
+  id           String   @id @default(uuid())
+  company_id   String
+  company      Company  @relation(fields: [company_id], references: [id])
+  client_id    String?
+  client       Client?  @relation(fields: [client_id], references: [id])
+  policy_id    String?
+  policy       Policy?  @relation(fields: [policy_id], references: [id])
+  claim_id     String?
+  claim        Claim?   @relation(fields: [claim_id], references: [id])
+  name         String
+  document_type String?
+  file_url     String
+  file_size    Int?
+  mime_type    String?
+  uploaded_by  String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+}
+
+model Agent {
+  id              String  @id @default(uuid())
+  profile_id      String  @unique
+  profile         Profile @relation(fields: [profile_id], references: [id])
+  company_id      String
+  commission_rate Float   @default(0)
+  is_active       Boolean @default(true)
+  total_clients   Int     @default(0)
+  total_contracts Int     @default(0)
+  total_commission Float @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  company_id  String?
+  user_id     String?
+  title       String
+  message     String
+  type        String
+  is_read     Boolean  @default(false)
+  related_entity String?
+  related_id  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+/// Prospecting models
+model Prospect {
+  id                 String        @id @default(uuid())
+  company_id         String
+  company            Company       @relation(fields: [company_id], references: [id])
+
+  // Contact Info
+  first_name         String
+  last_name          String
+  email              String
+  phone              String
+  company_name       String?
+  prospect_type      ProspectType  @default(individual)
+
+  // Gestion
+  status             ProspectStatus @default(new)
+  source             ProspectSource @default(other)
+  assigned_to_id     String?
+  assigned_to        Profile?      @relation(fields: [assigned_to_id], references: [id])
+
+  // Commercial data
+  needs              String?
+  budget_estimate    Float?
+  priority           String?
+
+  // Workflow
+  first_contact_date DateTime?
+  last_contact_date  DateTime?
+  next_followup_date DateTime?
+
+  // Conversion
+  client_id          String?
+  client             Client?       @relation(fields: [client_id], references: [id])
+  conversion_date    DateTime?
+  loss_reason        String?
+
+  // Tracking
+  notes              String?
+  interactions_count Int @default(0)
+
+  // Timestamps
+  created_by         String?
+  created_at         DateTime      @default(now())
+  updated_at         DateTime      @updatedAt
+
+  // Relations
+  interactions       ProspectInteraction[]
+  quotes             Quote[]
+  files              ProspectDocument[]
+}
+
+model ProspectInteraction {
+  id                 String   @id @default(uuid())
+  prospect_id        String
+  prospect           Prospect @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+
+  type               String
+  status_before      String?
+  status_after       String?
+  summary            String
+  notes              String?
+
+  done_by_id         String?
+  created_at         DateTime @default(now())
+}
+
+model Quote {
+  id                 String   @id @default(uuid())
+  company_id         String
+  company            Company  @relation(fields: [company_id], references: [id])
+  prospect_id        String
+  prospect           Prospect @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+
+  quote_number       String @unique
+  insurance_type     String
+  premium_amount     Float
+  coverage_description String?
+
+  valid_until        DateTime
+  status             String?
+
+  created_by         String?
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+}
+
+model ProspectDocument {
+  id                 String   @id @default(uuid())
+  prospect_id        String
+  prospect           Prospect @relation(fields: [prospect_id], references: [id], onDelete: Cascade)
+
+  name               String
+  file_url           String
+  document_type      String?
+  uploaded_at        DateTime @default(now())
+}
