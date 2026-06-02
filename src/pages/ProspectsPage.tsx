@@ -139,6 +139,7 @@ export function ProspectsPage() {
   const loadInteractions = useCallback(async (prospectId?: string) => {
     if (!prospectId) return;
     const res = await backendApi.from('prospect_interactions').select('*').eq('prospect_id', prospectId).order('created_at', { ascending: false });
+    console.log(res)
     setInteractions((res.data as ProspectInteraction[]) ?? []);
   }, []);
 

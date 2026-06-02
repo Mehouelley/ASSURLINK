@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
+
 @Injectable()
 export class ProspectInteractionsService {
   constructor(private prisma: PrismaService) {}
@@ -14,7 +15,7 @@ export class ProspectInteractionsService {
 
   async listByProspect(prospectId: string, companyId: string) {
     await this.ensureProspectCompany(prospectId, companyId);
-    return this.prisma.prospectInteraction.findMany({ where: { prospect_id: prospectId }, orderBy: { created_at: 'desc' } });
+    return this.prisma.prospectInteraction.findMany({ where: { prospect_id: prospectId },orderBy: { created_at: 'desc' } });
   }
 
   async create(prospectId: string, companyId: string, doneById: string | undefined, data: Record<string, unknown>) {
