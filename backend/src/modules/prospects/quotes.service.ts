@@ -14,6 +14,7 @@ export class QuotesService {
 
   async listByProspect(prospectId: string, companyId: string) {
     await this.ensureProspectCompany(prospectId, companyId);
+    
     return this.prisma.quote.findMany({ where: { prospect_id: prospectId }, orderBy: { created_at: 'desc' } });
   }
 

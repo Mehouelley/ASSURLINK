@@ -154,12 +154,12 @@ export function ProspectsPage() {
 
     const payload = {
       ...form,
-      company_id: profile.company_id,
-      created_by: profile.id,
+      //company_id: profile.company_id,
+      //created_by: profile.id,
       budget_estimate: form.budget_estimate ? Number(form.budget_estimate) : null,
       company_name: form.company_name || null,
     };
-
+     
     if (selected) {
       await backendApi.from('prospects').update(payload).eq('id', selected.id);
     } else {
