@@ -56,7 +56,7 @@ export class ProspectsService {
         prospect_type: data.prospect_type ? String(data.prospect_type) as ProspectType : undefined,
         status: data.status ? String(data.status) as ProspectStatus : undefined,
         source: data.source ? String(data.source) as ProspectSource : undefined,
-        assigned_to_id: data.assigned_to_id || null,
+        //assigned_to_id: data.assigned_to_id || null,
         needs: data.needs || null,
         budget_estimate: data.budget_estimate || null,
         priority: data.priority || null,
