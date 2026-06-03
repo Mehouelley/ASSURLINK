@@ -283,8 +283,23 @@ class BackendQueryBuilder<T = any> {
 		return this.execute().then(onfulfilled, onrejected);
 	}
 
+	private buildQueryString(): string {
+		const params = new URLSearchParams();
+
+		for (const filter of this.filters) {
+			if (filter.type === 'eq') {
+				params.append(filter.column, String(filter.value));
+			} else if (filter.type === 'in' && Array.isArray(filter.value)) {
+				params.append(filter.column, String(filter.value));
+			}
+		}
+
+		return params.toString() ? `?${params.toString()}` : '';
+	}
+
 	private async fetchCollection(): Promise<any[]> {
-		const { data, error } = await backendRequest<any[]>(tablePath(this.table));
+		const queryString = this.buildQueryString();
+		const { data, error } = await backendRequest<any[]>(`${tablePath(this.table)}${queryString}`);
 		if (error) throw error;
 		return Array.isArray(data) ? data : [];
 	}
@@ -487,6 +502,19 @@ async function activateTrial() {
 	});
 }
 
+async function forgotPassword(email: string) {
+  return backendRequest('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+async function resetPassword(token: string, password: string) {
+  return backendRequest('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
+}
 async function createFedapayPolicyPayment(payload: FedapayPolicyPaymentPayload) {
 	return backendRequest('/payments/fedapay/policy-payment', {
 		method: 'POST',
@@ -506,9 +534,7 @@ async function getFedapayTransactionStatus(transactionId: string) {
 }
 
 async function sendPaymentLink(paymentId: string) {
-	return backendRequest<SendPaymentLinkResponse>(`/payments/${paymentId}/send-link`, {
-		method: 'POST',
-	});
+	return backendRequest(`/payments/${paymentId}/send-link`, { method: 'POST' });
 }
 
 async function refundPayment(paymentId: string) {
@@ -524,6 +550,8 @@ export const backendApi = {
 		onAuthStateChange,
 		me,
 		activateTrial,
+		forgotPassword,
+		resetPassword,
 		admin: {
 			createUser: async () => ({
 				data: null,

@@ -83,7 +83,7 @@ export function LoginPage({ onNavigate }: LoginPageProps) {
             </div>
 
             <div className="flex justify-end">
-              <button type="button" className="text-sm text-blue-600 hover:underline">
+              <button type="button" onClick={() => window.location.href = '/forgot-password'} className="text-sm text-blue-600 hover:underline">
                 Mot de passe oublié ?
               </button>
             </div>

@@ -3,10 +3,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly emailService: EmailService) {}
 
   findAll(currentUser: { role?: string; companyId?: string }) {
     const isSuperAdmin = currentUser.role === 'super_admin';
@@ -37,6 +38,20 @@ export class UsersService {
         is_active: true,
       },
       include: { company: true },
+    });
+
+    const loginUrl = `${process.env.FRONTEND_URL?.replace(/\/$/, '') ?? 'http://localhost:5173'}/login`;
+    await this.emailService.sendMail({
+      to: profile.email ?? '',
+      subject: 'Votre compte ASSURLINK a été créé',
+      html: `<p>Bonjour ${profile.first_name ?? ''},</p>
+<p>Votre compte ASSURLINK a été créé avec succès.</p>
+<ul>
+  <li>Email : <strong>${profile.email}</strong></li>
+  <li>Mot de passe : <strong>${body.password}</strong></li>
+</ul>
+<p>Vous pouvez vous connecter ici : <a href="${loginUrl}">${loginUrl}</a></p>
+<p>Nous vous recommandons de changer votre mot de passe après votre première connexion.</p>`,
     });
 
     // If a commission_rate is provided and we have a company, create the Agent record

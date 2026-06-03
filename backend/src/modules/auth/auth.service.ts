@@ -6,12 +6,15 @@ import { LoginDto } from './dto/login.dto';
 import { AuthResponse, AuthUserPayload, CompanyAccessStatus } from './interfaces/auth-response.interface';
 import * as bcrypt from 'bcrypt';
 import { Profile } from '@prisma/client';
+import * as crypto from 'crypto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly emailService: EmailService,
   ) {}
 
   private toUserPayload(profile: Profile): AuthUserPayload {
@@ -47,6 +50,35 @@ export class AuthService {
               ? 'expired'
               : 'expired',
     };
+  }
+
+  private getFrontendUrl() {
+    return process.env.FRONTEND_URL?.replace(/\/$/, '') ?? 'http://localhost:5173';
+  }
+
+  private async sendWelcomeEmail(profile: Profile) {
+    const loginUrl = `${this.getFrontendUrl()}/login`;
+    await this.emailService.sendMail({
+      to: profile.email ?? '',
+      subject: 'Bienvenue sur ASSURLINK',
+      html: `<p>Bonjour ${profile.first_name ?? ''},</p>
+<p>Votre compte ASSURLINK a bien été créé.</p>
+<p>Vous pouvez vous connecter avec votre adresse email.</p>
+<p><a href="${loginUrl}">Accéder à ASSURLINK</a></p>`,
+    });
+  }
+
+  private async sendPasswordResetEmail(profile: Profile, token: string) {
+    const resetLink = `${this.getFrontendUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+    await this.emailService.sendMail({
+      to: profile.email ?? '',
+      subject: 'Réinitialisation de votre mot de passe ASSURLINK',
+      html: `<p>Bonjour ${profile.first_name ?? ''},</p>
+<p>Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte ASSURLINK.</p>
+<p>Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe :</p>
+<p><a href="${resetLink}">${resetLink}</a></p>
+<p>Ce lien expire dans 1 heure.</p>`,
+    });
   }
 
   async activateTrialForUser(userId: string) {
@@ -131,7 +163,56 @@ export class AuthService {
       },
     });
 
+    this.sendWelcomeEmail(profile).catch(() => undefined);
+
     return this.signTokens(profile);
+  }
+
+  async forgotPassword(email: string) {
+    const profile = await this.prisma.profile.findUnique({ where: { email } });
+    if (!profile || !profile.email) {
+      return { success: true };
+    }
+
+    const token = await this.jwtService.signAsync(
+      { sub: profile.id, purpose: 'reset-password' },
+      { secret: process.env.JWT_RESET_SECRET ?? 'dev-reset-secret', expiresIn: '1h' },
+    );
+
+    await this.sendPasswordResetEmail(profile, token).catch(() => undefined);
+    return { success: true };
+  }
+
+  async resetPassword(dto: { token: string; password: string }) {
+    let payload: { sub: string; purpose?: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync<{ sub: string; purpose?: string }>(dto.token, {
+        secret: process.env.JWT_RESET_SECRET ?? 'dev-reset-secret',
+      });
+    } catch {
+      throw new UnauthorizedException('Token de réinitialisation invalide ou expiré');
+    }
+
+    if (payload.purpose !== 'reset-password') {
+      throw new UnauthorizedException('Token de réinitialisation invalide');
+    }
+
+    const profile = await this.prisma.profile.findUnique({ where: { id: payload.sub } });
+    if (!profile) {
+      throw new NotFoundException('Utilisateur introuvable');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    await this.prisma.profile.update({
+      where: { id: profile.id },
+      data: {
+        password_hash: passwordHash,
+        refresh_token_hash: null,
+      },
+    });
+
+    return { success: true };
   }
 
   async login(dto: LoginDto): Promise<AuthResponse> {

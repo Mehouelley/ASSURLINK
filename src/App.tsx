@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
+import { ForgotPasswordPage } from './pages/auth/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/auth/ResetPasswordPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { PoliciesPage } from './pages/PoliciesPage';
@@ -60,6 +62,12 @@ function Router() {
     }
     if (location === '/login') {
       return <LoginPage onNavigate={(p) => { window.location.href = p === 'register' ? '/register' : '/login'; }} />;
+    }
+    if (location === '/forgot-password') {
+      return <ForgotPasswordPage />;
+    }
+    if (location === '/reset-password') {
+      return <ResetPasswordPage />;
     }
     return <LandingPage />;
   }
