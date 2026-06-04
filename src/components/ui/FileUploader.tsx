@@ -20,11 +20,12 @@ export function FileUploader({ multiple = false, accept = '*/*', onUploaded }: P
     }
 
     return new Promise<void>((resolve, reject) => {
+      const isRawFile = /\.(pdf|doc|docx|xls|xlsx|txt)$/i.test(file.name);
       const url = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
       const fd = new FormData();
       fd.append('file', file);
       fd.append('upload_preset', uploadPreset);
-      fd.append('resource_type', 'auto');
+      fd.append('resource_type', isRawFile ? 'raw' : 'auto');
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', url);
