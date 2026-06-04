@@ -24,6 +24,7 @@ export function FileUploader({ multiple = false, accept = '*/*', onUploaded }: P
       const fd = new FormData();
       fd.append('file', file);
       fd.append('upload_preset', uploadPreset);
+      fd.append('resource_type', 'auto');
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', url);
