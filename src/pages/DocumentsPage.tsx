@@ -54,9 +54,10 @@ export function DocumentsPage() {
     if (!form.name || !form.file_url) return;
     setSaving(true);
     await backendApi.from('documents').insert({
-      name: form.name, document_type: form.document_type,
-      file_url: form.file_url, client_id: form.client_id || null,
-      company_id: profile!.company_id, uploaded_by: profile!.id,
+      name: form.name,
+      document_type: form.document_type,
+      file_url: form.file_url,
+      client_id: form.client_id || null,
     });
     setSaving(false);
     setModalOpen(false);
