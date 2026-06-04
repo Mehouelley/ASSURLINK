@@ -125,9 +125,7 @@ export function ClaimsPage() {
               name: `Preuve ${inserted.claim_number}`,
               document_type: 'photo_accident',
               file_url: url,
-              company_id: profile!.company_id,
               claim_id: inserted.id,
-              uploaded_by: profile!.id,
             });
           } catch (e) { console.error('document insert failed', e); }
         }
